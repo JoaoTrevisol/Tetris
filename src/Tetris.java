@@ -9,31 +9,26 @@ public class Tetris extends JPanel {
     private int[][] board = new int[ROWS][COLS];
     private Tetromino currentPiece;
     private Timer timer;
+    private int score = 0; // ✅ pontuação
 
     public Tetris() {
         setPreferredSize(new Dimension(COLS * CELL_SIZE, ROWS * CELL_SIZE));
-        setBackground(Color.BLACK);
+        setBackground(new Color(30, 30, 30)); // 🎨 fundo cinza escuro
 
-        // Criar peça "O"
-        int[][] shapeO = {
-                {1, 1},
-                {1, 1}
-        };
-        currentPiece = new Tetromino(shapeO, 0, 4);
+        currentPiece = TetrominoFactory.createRandomTetromino();
 
-        // Timer que move a peça para baixo
         timer = new Timer(500, e -> {
             if (canMoveDown(currentPiece)) {
                 currentPiece.moveDown();
             } else {
                 fixPiece();
-                currentPiece = new Tetromino(shapeO, 0, 4);
+                currentPiece = TetrominoFactory.createRandomTetromino();
+
             }
             repaint();
         });
         timer.start();
 
-        // Controle por teclado
         setFocusable(true);
         requestFocusInWindow();
 
@@ -103,6 +98,37 @@ public class Tetris extends JPanel {
                 }
             }
         }
+
+        clearFullLines(); // ✅ limpar linhas e marcar pontos
+    }
+
+    private void clearFullLines() {
+        int linesCleared = 0;
+
+        for (int row = ROWS - 1; row >= 0; row--) {
+            boolean full = true;
+
+            for (int col = 0; col < COLS; col++) {
+                if (board[row][col] == 0) {
+                    full = false;
+                    break;
+                }
+            }
+
+            if (full) {
+                for (int r = row; r > 0; r--) {
+                    System.arraycopy(board[r - 1], 0, board[r], 0, COLS);
+                }
+                for (int c = 0; c < COLS; c++) {
+                    board[0][c] = 0;
+                }
+
+                linesCleared++;
+                row++; // verificar novamente a mesma linha
+            }
+        }
+
+        score += linesCleared * 100; // ✅ soma de pontos
     }
 
     @Override
@@ -144,6 +170,11 @@ public class Tetris extends JPanel {
                 }
             }
         }
+
+        // ✅ Exibir pontuação
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 18));
+        g.drawString("Score: " + score, 10, 20);
     }
 
     public static void main(String[] args) {
