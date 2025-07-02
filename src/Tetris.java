@@ -34,6 +34,12 @@ public class Tetris extends JPanel {
                 if (!canMove(currentPiece, 0, 0)) {
                     gameOver = true;
                     timer.stop();
+
+                    // Timer de 2 segundos para reiniciar
+                    new Timer(2000, evt -> {
+                        ((Timer) evt.getSource()).stop(); // para esse timer
+                        resetGame();
+                    }).start();
                 }
             }
             repaint();
@@ -224,9 +230,15 @@ public class Tetris extends JPanel {
 
         if (gameOver) {
             g.setColor(Color.RED);
-            g.setFont(new Font("Arial", Font.BOLD, 36));
-            g.drawString("GAME OVER", panelX - 40, ROWS * CELL_SIZE / 2);
+            g.setFont(new Font("Arial", Font.BOLD, 48));
+            String msg = "GAME OVER";
+            FontMetrics fm = g.getFontMetrics();
+            int textWidth = fm.stringWidth(msg);
+            int x = (COLS * CELL_SIZE - textWidth) / 2;
+            int y = (ROWS * CELL_SIZE) / 2;
+            g.drawString(msg, x, y);
         }
+
     }
 
     public static void main(String[] args) {
@@ -237,4 +249,14 @@ public class Tetris extends JPanel {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
+
+    private void resetGame() {
+        board = new int[ROWS][COLS];
+        currentPiece = TetrominoFactory.createRandomTetromino();
+        score = 0;
+        gameOver = false;
+        timer.start();
+        repaint();
+    }
+
 }
