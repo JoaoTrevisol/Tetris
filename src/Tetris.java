@@ -1,5 +1,8 @@
+
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Tetris extends JPanel {
 
@@ -11,17 +14,17 @@ public class Tetris extends JPanel {
     private Timer timer;
     private int score = 0;
     private boolean gameOver = false;
+    private List<Integer> scoreHistory = new ArrayList<>();
 
     public Tetris() {
         setPreferredSize(new Dimension(COLS * CELL_SIZE + 150, ROWS * CELL_SIZE));
-        setBackground(new Color(30, 30, 30)); // fundo cinza escuro
-
+        setBackground(new Color(30, 30, 30));
         currentPiece = TetrominoFactory.createRandomTetromino();
 
         timer = new Timer(500, e -> {
             if (gameOver) return;
 
-            if (canMove(currentPiece, 1, 0)) {
+            if (canMoveDown(currentPiece)) {
                 currentPiece.moveDown();
             } else {
                 fixPiece();
@@ -34,10 +37,12 @@ public class Tetris extends JPanel {
                 if (!canMove(currentPiece, 0, 0)) {
                     gameOver = true;
                     timer.stop();
-
-                    // Timer de 2 segundos para reiniciar
                     new Timer(2000, evt -> {
-                        ((Timer) evt.getSource()).stop(); // para esse timer
+                        ((Timer) evt.getSource()).stop();
+                        scoreHistory.add(0, score);
+                        if (scoreHistory.size() > 5) {
+                            scoreHistory.remove(scoreHistory.size() - 1);
+                        }
                         resetGame();
                     }).start();
                 }
@@ -53,7 +58,6 @@ public class Tetris extends JPanel {
             @Override
             public void keyPressed(java.awt.event.KeyEvent e) {
                 if (gameOver) return;
-
                 int key = e.getKeyCode();
                 switch (key) {
                     case java.awt.event.KeyEvent.VK_LEFT:
@@ -74,11 +78,26 @@ public class Tetris extends JPanel {
         });
     }
 
+    private void resetGame() {
+        board = new int[ROWS][COLS];
+        currentPiece = TetrominoFactory.createRandomTetromino();
+        score = 0;
+        gameOver = false;
+        timer.start();
+        repaint();
+    }
+
     private void rotateCurrentPiece() {
         currentPiece.rotate();
         if (!canMove(currentPiece, 0, 0)) {
-            currentPiece.rotate(); currentPiece.rotate(); currentPiece.rotate();
+            currentPiece.rotate();
+            currentPiece.rotate();
+            currentPiece.rotate();
         }
+    }
+
+    private boolean canMoveDown(Tetromino piece) {
+        return canMove(piece, 1, 0);
     }
 
     private boolean canMove(Tetromino piece, int rowOffset, int colOffset) {
@@ -91,14 +110,10 @@ public class Tetris extends JPanel {
                 if (shape[r][c] == 1) {
                     int boardRow = newRow + r;
                     int boardCol = newCol + c;
-
-                    if (boardRow < 0 || boardRow >= ROWS || boardCol < 0 || boardCol >= COLS) {
+                    if (boardRow < 0 || boardRow >= ROWS || boardCol < 0 || boardCol >= COLS)
                         return false;
-                    }
-
-                    if (board[boardRow][boardCol] != 0) {
+                    if (board[boardRow][boardCol] != 0)
                         return false;
-                    }
                 }
             }
         }
@@ -109,26 +124,22 @@ public class Tetris extends JPanel {
         int[][] shape = currentPiece.getShape();
         int startRow = currentPiece.getRow();
         int startCol = currentPiece.getCol();
-        Color color = currentPiece.getColor();
-
         for (int r = 0; r < shape.length; r++) {
             for (int c = 0; c < shape[r].length; c++) {
                 if (shape[r][c] == 1) {
                     int row = startRow + r;
                     int col = startCol + c;
                     if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
-                        board[row][col] = color.getRGB();
+                        board[row][col] = currentPiece.getColor().getRGB();
                     }
                 }
             }
         }
-
         clearFullLines();
     }
 
     private void clearFullLines() {
         int linesCleared = 0;
-
         for (int row = ROWS - 1; row >= 0; row--) {
             boolean full = true;
             for (int col = 0; col < COLS; col++) {
@@ -137,7 +148,6 @@ public class Tetris extends JPanel {
                     break;
                 }
             }
-
             if (full) {
                 for (int r = row; r > 0; r--) {
                     System.arraycopy(board[r - 1], 0, board[r], 0, COLS);
@@ -145,28 +155,25 @@ public class Tetris extends JPanel {
                 for (int c = 0; c < COLS; c++) {
                     board[0][c] = 0;
                 }
-
                 linesCleared++;
                 row++;
             }
         }
-
         score += linesCleared * 100;
     }
 
     private int getShadowRow() {
-        int row = currentPiece.getRow();
-        while (canMove(currentPiece, row + 1 - currentPiece.getRow(), 0)) {
-            row++;
+        int shadowRow = currentPiece.getRow();
+        while (canMove(currentPiece, shadowRow - currentPiece.getRow() + 1, 0)) {
+            shadowRow++;
         }
-        return row;
+        return shadowRow;
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Grade
         g.setColor(Color.DARK_GRAY);
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
@@ -174,7 +181,6 @@ public class Tetris extends JPanel {
             }
         }
 
-        // Blocos fixos
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 if (board[row][col] != 0) {
@@ -184,7 +190,6 @@ public class Tetris extends JPanel {
             }
         }
 
-        // Sombra da peça
         if (currentPiece != null) {
             int shadowRow = getShadowRow();
             int[][] shape = currentPiece.getShape();
@@ -193,7 +198,6 @@ public class Tetris extends JPanel {
 
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setColor(shadowColor);
-
             for (int r = 0; r < shape.length; r++) {
                 for (int c = 0; c < shape[r].length; c++) {
                     if (shape[r][c] == 1) {
@@ -205,7 +209,6 @@ public class Tetris extends JPanel {
             }
             g2.dispose();
 
-            // Peça atual
             g.setColor(baseColor);
             for (int r = 0; r < shape.length; r++) {
                 for (int c = 0; c < shape[r].length; c++) {
@@ -218,7 +221,6 @@ public class Tetris extends JPanel {
             }
         }
 
-        // Painel lateral
         int panelX = COLS * CELL_SIZE + 10;
         g.setColor(new Color(50, 50, 50));
         g.fillRect(panelX, 0, 140, ROWS * CELL_SIZE);
@@ -227,6 +229,12 @@ public class Tetris extends JPanel {
         g.setFont(new Font("Arial", Font.BOLD, 20));
         g.drawString("Score:", panelX + 10, 50);
         g.drawString("" + score, panelX + 10, 80);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        g.drawString("Últimas pontuações:", panelX + 10, 130);
+        for (int i = 0; i < scoreHistory.size(); i++) {
+            g.drawString((i + 1) + ". " + scoreHistory.get(i), panelX + 10, 155 + i * 20);
+        }
 
         if (gameOver) {
             g.setColor(Color.RED);
@@ -238,25 +246,15 @@ public class Tetris extends JPanel {
             int y = (ROWS * CELL_SIZE) / 2;
             g.drawString(msg, x, y);
         }
-
     }
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Tetris");
-        frame.add(new Tetris());
+        Tetris game = new Tetris();
+        frame.add(game);
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
-
-    private void resetGame() {
-        board = new int[ROWS][COLS];
-        currentPiece = TetrominoFactory.createRandomTetromino();
-        score = 0;
-        gameOver = false;
-        timer.start();
-        repaint();
-    }
-
 }
